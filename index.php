@@ -10,11 +10,43 @@ include_once('src/Config/EmptyException.php');
 
 use Mapping\Mapper;
 
+
+
+function populateNeededFields(array $neededFields, $tree)
+{
+    if (!is_array($tree)) {
+        return $tree;
+    }
+
+    foreach ($tree as $key => $value) {
+        if (!isset($neededFields[$key])) {
+            $neededFields[$key] = [];
+        }
+        $neededFields[$key][] = populateNeededFields($neededFields[$key], $value);
+    }
+
+    return $neededFields;
+}
+
+function recursiveArray(array $elements) {
+    if (empty($elements)) {
+        return '';
+    }
+
+    if (count($elements) === 1) {
+        return array_shift($elements);
+    }
+
+    $element = array_shift($elements);
+    return [$element => recursiveArray($elements)];
+}
+
+
 $output = [
     'properties' => [
         'id' => [
             'required_fields' => [
-                'user_id',
+                'user.user_id',
             ],
         ],
         'firstname' => [
@@ -64,20 +96,42 @@ $output = [
 $mapper = new Mapper();
 $mapper->addConfig('User', $output);
 $fields = $mapper->getRequiredFields();
-var_dump($fields);
 
-var_dump($mapper);
+$neededFields = [];
+
+foreach ($fields as $entityName => $entityFields) {
+    foreach ($entityFields as $fieldName) {
+        $treeFields = explode('.', $fieldName);
+        //populateRecursiveArray($neededFields, $fieldTree);
+        $tree = recursiveArray($treeFields);
+        $neededFields = populateNeededFields($neededFields, $tree);
+    }
+}
 
 $pdo = new PDO('mysql:dbname=mevia;host=localhost', 'root', 'root');
 
-$queryArticles = $pdo->query('SELECT * FROM article LIMIT 1000');
-$articles = $queryArticles->fetchAll(PDO::FETCH_ASSOC);
-$mapper->populate('User', 'article', $articles);
+foreach ($neededFields as $table => $fields) {
+    $fields = array_unique(array_merge(['id'], $fields));
+    $fields = implode(', ', $fields);
+    switch ($table) {
+        case 'user':
+            break;
+        case 'article':
+            $queryArticles = $pdo->query('SELECT '.$fields.' FROM article LIMIT 1000');
+            $articles = $queryArticles->fetchAll(PDO::FETCH_ASSOC);
+            $mapper->populate('User', 'article', $articles);
+            break;
+        case 'academic':
+            break;
+            $queryAcademic = $pdo->prepare('SELECT '.$fields.' FROM academic LIMIT 1000');
+            $academics = $queryAcademic->fetchAll(PDO::FETCH_ASSOC);
+            $mapper->populate('User', 'academic', $academics);
+            break;
+        default:
+            break;
+    }
+}
 
-$usersIds = array_values(array_unique(array_column($articles, 'user_id')));
-$queryAcademic = $pdo->prepare('SELECT * FROM academic WHERE user_id IN (:user_id) LIMIT 100');
-$queryAcademic->bindValue(':user_id', implode(',',$usersIds), PDO::PARAM_STR);
-$queryAcademic->execute();
-$academics = $queryAcademic->fetchAll(PDO::FETCH_ASSOC);
 
-$mapper->populate('User', 'academic', $academics);
+
+

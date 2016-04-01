@@ -42,12 +42,7 @@ class Tree
             if (!in_array($type.'.'.$key, $requiredFields)) {
                 continue;
             }
-
-            var_dump($type.'.'.$key);
-            var_dump($this->config);
         }
-        var_dump($data);
-        die;
     }
 
 
