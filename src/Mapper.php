@@ -41,11 +41,11 @@ class Mapper {
 
     public function populate($name, $type, array $data)
     {
-
         if (!isset($this->configs[$name])) {
+            return;
         }
 
-        $ownerColumn = $this->getOwnerColumn($type);
+        $ownerColumn = $this->getOwnerColumn($name, $type);
 
         foreach ($data as $values) {
             if (!isset($values[$ownerColumn])) {
@@ -53,25 +53,78 @@ class Mapper {
             }
 
             $ownerId = $values[$ownerColumn];
-            if (!isset($this->trees[$ownerId])) {
-                $this->trees[$ownerId] = new Tree($this->configs[$name]);
+            if (!isset($this->trees[$name])) {
+                $this->trees[$name] = [];
             }
 
-            $this->trees[$ownerId]->populate($type, $values);
+            if (!isset($this->trees[$name][$ownerId])) {
+                $this->trees[$name][$ownerId] = new Tree($this->configs[$name]);
+            }
+
+            $this->trees[$name][$ownerId]->populate($type, $values);
         }
     }
 
-    private function getOwnerColumn($type)
+    public function toArray()
+    {
+        $array = [];
+
+        foreach ($this->trees as $type => $elements) {
+            if (empty($elements)) {
+                continue;
+            }
+
+            if (!isset($array[$type])) {
+                $array[$type] = [];
+            }
+
+            foreach ($elements as $key => $value) {
+                $array[$type][$key] = $value->toArray();
+            }
+        }
+
+        return $array;
+    }
+
+    private function getOwnerColumn($name, $type)
     {
         $column = null;
 
         switch ($type) {
             case 'article':
+                $column = $this->getArticleOwnerColumn($name);
+                break;
             case 'academic':
-                $column = 'user_id';
+                $column = $this->getAcademicOwnerColumn($name);
                 break;
             default:
                 break;
+        }
+
+        return $column;
+    }
+
+    private function getAcademicOwnerColumn($name)
+    {
+        switch ($name) {
+            case 'User':
+                $column = 'user_id';
+                break;
+            default:
+                $column = null;
+        }
+
+        return $column;
+    }
+
+    private function getArticleOwnerColumn($name)
+    {
+        switch ($name) {
+            case 'User':
+                $column = 'user_id';
+                break;
+            default:
+                $column = null;
         }
 
         return $column;

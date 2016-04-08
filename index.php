@@ -59,9 +59,6 @@ $output = [
                 'user.lastname',
             ],
         ],
-        'fullname' => [
-            'callback' => 'user_fullname',
-        ],
         'articles' => [
             'properties' => [
                 'article_id ' => [
@@ -72,6 +69,11 @@ $output = [
                 'title' => [
                     'required_fields' => [
                         'article.title'
+                    ],
+                ],
+                'user_id' => [
+                    'required_fields' => [
+                        'article.user_id',
                     ],
                 ],
             ]
@@ -88,6 +90,11 @@ $output = [
                         'academic.graduation',
                     ],
                 ],
+                'user_id' => [
+                    'required_fields' => [
+                        'academic.user_id',
+                    ],
+                ],
             ],
         ],
     ],
@@ -102,7 +109,6 @@ $neededFields = [];
 foreach ($fields as $entityName => $entityFields) {
     foreach ($entityFields as $fieldName) {
         $treeFields = explode('.', $fieldName);
-        //populateRecursiveArray($neededFields, $fieldTree);
         $tree = recursiveArray($treeFields);
         $neededFields = populateNeededFields($neededFields, $tree);
     }
@@ -122,8 +128,7 @@ foreach ($neededFields as $table => $fields) {
             $mapper->populate('User', 'article', $articles);
             break;
         case 'academic':
-            break;
-            $queryAcademic = $pdo->prepare('SELECT '.$fields.' FROM academic LIMIT 1000');
+            $queryAcademic = $pdo->query('SELECT '.$fields.' FROM academic LIMIT 1000');
             $academics = $queryAcademic->fetchAll(PDO::FETCH_ASSOC);
             $mapper->populate('User', 'academic', $academics);
             break;
@@ -131,6 +136,8 @@ foreach ($neededFields as $table => $fields) {
             break;
     }
 }
+
+$elements = $mapper->toArray();
 
 
 

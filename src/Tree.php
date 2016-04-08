@@ -12,7 +12,7 @@ class Tree
     private $config;
 
     /**
-     * @var Tree[]
+     * @var array[]
      */
     private $elements;
 
@@ -31,7 +31,7 @@ class Tree
 
     public function toArray()
     {
-
+        return $this->elements;
     }
 
     public function populate($type, array $data)
@@ -42,21 +42,30 @@ class Tree
             if (!in_array($type.'.'.$key, $requiredFields)) {
                 continue;
             }
+
+            $hasElement = $this->hasElement($type, $data);
+
+            if (!$hasElement) {
+                $this->createElement($type, $data);
+            }
         }
     }
 
-
-
-    /**
-     * @param Tree $element
-     * @throws AlreadyExistsException
-     */
-    private function addElement(Tree $element)
+    private function hasElement($type, array $data)
     {
-        if (isset($this->elements[$element->getName()])) {
-            throw new AlreadyExistsException();
+        if (empty($data['id'])) {
+            throw new \InvalidArgumentException();
         }
 
-        $this->elements[$element->getName()] = $element;
+        return isset($this->elements[$type][$data['id']]);
+    }
+
+    private function createElement($type, $data)
+    {
+        if (!isset($this->elements[$type])) {
+            $this->elements[$type] = [];
+        }
+
+        $this->elements[$type][$data['id']] = $data;
     }
 }
